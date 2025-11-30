@@ -1,13 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { 
   Home, Activity, FileText, Settings, Plus, Search, 
   TrendingUp, AlertCircle, Calendar, Weight, Syringe, 
-  MapPin, Download, Filter, ChevronRight, Menu, X, Edit, Trash2,
-  ClipboardList, ShoppingCart, DollarSign, CheckCircle, LogOut
+  MapPin, Download, Filter, ChevronRight, Menu, X, Edit, Trash2
 } from 'lucide-react';
 
 // Tipos
@@ -19,8 +16,6 @@ type Animal = {
   peso: number;
   lote: string;
   status: 'Ativo' | 'Vendido' | 'Morto';
-  pesoCompra?: number;
-  dataCompra?: string;
 };
 
 type Evento = {
@@ -41,24 +36,6 @@ type Pesagem = {
   dataSaida: string;
   gmd: number;
   diasPeriodo: number;
-};
-
-type EventoRonda = {
-  id: string;
-  animalId: string;
-  invernada: string;
-  tipoEvento: 'Doença' | 'Ferimento' | 'Comportamento Anormal' | 'Morte' | 'Parto' | 'Outro';
-  descricao: string;
-  data: string;
-  hora: string;
-  observacoes?: string;
-};
-
-type OperacaoPesagem = 'compra' | 'venda' | null;
-
-type AnimalVenda = {
-  animalId: string;
-  pesoVenda: number;
 };
 
 // Função para formatar data de forma consistente
@@ -82,63 +59,25 @@ const calcularGMD = (pesoEntrada: number, pesoSaida: number, dataEntrada: string
 };
 
 export default function BoiGauchoApp() {
-  const router = useRouter();
   const [montado, setMontado] = useState(false);
-  const [carregando, setCarregando] = useState(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
-  const [telaAtiva, setTelaAtiva] = useState<'dashboard' | 'animais' | 'eventos' | 'relatorios' | 'pesagem' | 'ronda'>('dashboard');
-  const [modalAberto, setModalAberto] = useState<'animal' | 'evento' | 'pesagem' | 'ronda' | 'compra' | 'venda' | null>(null);
+  const [telaAtiva, setTelaAtiva] = useState<'dashboard' | 'animais' | 'eventos' | 'relatorios' | 'pesagem'>('dashboard');
+  const [modalAberto, setModalAberto] = useState<'animal' | 'evento' | 'pesagem' | null>(null);
   const [busca, setBusca] = useState('');
   const [pesagemEditando, setPesagemEditando] = useState<string | null>(null);
-  const [rondaEditando, setRondaEditando] = useState<string | null>(null);
-  const [operacaoPesagem, setOperacaoPesagem] = useState<OperacaoPesagem>(null);
-  const [animaisVenda, setAnimaisVenda] = useState<AnimalVenda[]>([]);
 
-  // Verificar autenticação
+  // Garantir que o componente está montado no cliente
   useEffect(() => {
-    const checkAuth = async () => {
-      if (!supabase) {
-        console.error('Supabase não configurado');
-        router.push('/login');
-        return;
-      }
-
-      try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (error || !user) {
-          console.log('Usuário não autenticado, redirecionando...');
-          router.push('/login');
-          return;
-        }
-
-        setUserEmail(user.email || null);
-        setCarregando(false);
-        setMontado(true);
-      } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-        router.push('/login');
-      }
-    };
-
-    checkAuth();
-  }, [router]);
-
-  // Função de logout
-  const handleLogout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
-    router.push('/login');
-  };
+    setMontado(true);
+  }, []);
 
   // Dados mockados realistas
   const [animais, setAnimais] = useState<Animal[]>([
-    { id: '1', identificador: 'BV-001', sexo: 'Macho', dataNascimento: '2022-03-15', peso: 450, lote: 'Engorda A', status: 'Ativo', pesoCompra: 400, dataCompra: '2023-12-01' },
-    { id: '2', identificador: 'BV-002', sexo: 'Fêmea', dataNascimento: '2021-08-20', peso: 380, lote: 'Cria B', status: 'Ativo', pesoCompra: 350, dataCompra: '2023-11-15' },
-    { id: '3', identificador: 'BV-003', sexo: 'Macho', dataNascimento: '2022-01-10', peso: 520, lote: 'Engorda A', status: 'Ativo', pesoCompra: 480, dataCompra: '2023-12-15' },
-    { id: '4', identificador: 'BV-004', sexo: 'Fêmea', dataNascimento: '2021-11-05', peso: 410, lote: 'Recria C', status: 'Ativo', pesoCompra: 380, dataCompra: '2023-11-20' },
-    { id: '5', identificador: 'BV-005', sexo: 'Macho', dataNascimento: '2022-05-22', peso: 390, lote: 'Engorda A', status: 'Ativo', pesoCompra: 360, dataCompra: '2023-12-10' },
+    { id: '1', identificador: 'BV-001', sexo: 'Macho', dataNascimento: '2022-03-15', peso: 450, lote: 'Engorda A', status: 'Ativo' },
+    { id: '2', identificador: 'BV-002', sexo: 'Fêmea', dataNascimento: '2021-08-20', peso: 380, lote: 'Cria B', status: 'Ativo' },
+    { id: '3', identificador: 'BV-003', sexo: 'Macho', dataNascimento: '2022-01-10', peso: 520, lote: 'Engorda A', status: 'Ativo' },
+    { id: '4', identificador: 'BV-004', sexo: 'Fêmea', dataNascimento: '2021-11-05', peso: 410, lote: 'Recria C', status: 'Ativo' },
+    { id: '5', identificador: 'BV-005', sexo: 'Macho', dataNascimento: '2022-05-22', peso: 390, lote: 'Engorda A', status: 'Ativo' },
   ]);
 
   const [eventos, setEventos] = useState<Evento[]>([
@@ -171,29 +110,6 @@ export default function BoiGauchoApp() {
     },
   ]);
 
-  const [eventosRonda, setEventosRonda] = useState<EventoRonda[]>([
-    {
-      id: '1',
-      animalId: '1',
-      invernada: 'Invernada Norte',
-      tipoEvento: 'Comportamento Anormal',
-      descricao: 'Animal isolado do grupo',
-      data: '2024-01-22',
-      hora: '08:30',
-      observacoes: 'Monitorar nas próximas 24h'
-    },
-    {
-      id: '2',
-      animalId: '2',
-      invernada: 'Invernada Sul',
-      tipoEvento: 'Ferimento',
-      descricao: 'Pequeno corte na pata traseira',
-      data: '2024-01-21',
-      hora: '14:15',
-      observacoes: 'Aplicado spray cicatrizante'
-    },
-  ]);
-
   // Formulários
   const [novoAnimal, setNovoAnimal] = useState({
     identificador: '',
@@ -217,25 +133,6 @@ export default function BoiGauchoApp() {
     pesoSaida: '',
     dataEntrada: '',
     dataSaida: '',
-  });
-
-  const [novoEventoRonda, setNovoEventoRonda] = useState({
-    animalId: '',
-    invernada: '',
-    tipoEvento: 'Doença' as 'Doença' | 'Ferimento' | 'Comportamento Anormal' | 'Morte' | 'Parto' | 'Outro',
-    descricao: '',
-    data: '',
-    hora: '',
-    observacoes: '',
-  });
-
-  const [compraAnimal, setCompraAnimal] = useState({
-    identificador: '',
-    sexo: 'Macho' as 'Macho' | 'Fêmea',
-    dataNascimento: '',
-    pesoCompra: '',
-    dataCompra: '',
-    lote: '',
   });
 
   // Funções
@@ -378,171 +275,6 @@ export default function BoiGauchoApp() {
     }
   };
 
-  const adicionarEventoRonda = () => {
-    if (!novoEventoRonda.animalId || !novoEventoRonda.invernada || !novoEventoRonda.descricao || !novoEventoRonda.data || !novoEventoRonda.hora) {
-      alert('Preencha todos os campos obrigatórios');
-      return;
-    }
-
-    const eventoRonda: EventoRonda = {
-      id: Date.now().toString(),
-      animalId: novoEventoRonda.animalId,
-      invernada: novoEventoRonda.invernada,
-      tipoEvento: novoEventoRonda.tipoEvento,
-      descricao: novoEventoRonda.descricao,
-      data: novoEventoRonda.data,
-      hora: novoEventoRonda.hora,
-      observacoes: novoEventoRonda.observacoes,
-    };
-
-    setEventosRonda([...eventosRonda, eventoRonda]);
-
-    // Se o tipo de evento for "Morte", marcar o animal como inativo
-    if (novoEventoRonda.tipoEvento === 'Morte') {
-      setAnimais(animais.map(a => 
-        a.id === novoEventoRonda.animalId ? { ...a, status: 'Morto' } : a
-      ));
-    }
-
-    setNovoEventoRonda({ animalId: '', invernada: '', tipoEvento: 'Doença', descricao: '', data: '', hora: '', observacoes: '' });
-    setModalAberto(null);
-  };
-
-  const editarEventoRonda = (id: string) => {
-    const evento = eventosRonda.find(e => e.id === id);
-    if (evento) {
-      setNovoEventoRonda({
-        animalId: evento.animalId,
-        invernada: evento.invernada,
-        tipoEvento: evento.tipoEvento,
-        descricao: evento.descricao,
-        data: evento.data,
-        hora: evento.hora,
-        observacoes: evento.observacoes || '',
-      });
-      setRondaEditando(id);
-      setModalAberto('ronda');
-    }
-  };
-
-  const atualizarEventoRonda = () => {
-    if (!rondaEditando) return;
-
-    const eventoAnterior = eventosRonda.find(e => e.id === rondaEditando);
-
-    setEventosRonda(eventosRonda.map(e => 
-      e.id === rondaEditando 
-        ? { 
-            ...e, 
-            animalId: novoEventoRonda.animalId,
-            invernada: novoEventoRonda.invernada,
-            tipoEvento: novoEventoRonda.tipoEvento,
-            descricao: novoEventoRonda.descricao,
-            data: novoEventoRonda.data,
-            hora: novoEventoRonda.hora,
-            observacoes: novoEventoRonda.observacoes,
-          }
-        : e
-    ));
-
-    // Se o tipo de evento mudou para "Morte", marcar o animal como inativo
-    if (novoEventoRonda.tipoEvento === 'Morte' && eventoAnterior?.tipoEvento !== 'Morte') {
-      setAnimais(animais.map(a => 
-        a.id === novoEventoRonda.animalId ? { ...a, status: 'Morto' } : a
-      ));
-    }
-
-    // Se o tipo de evento mudou de "Morte" para outro, reativar o animal
-    if (eventoAnterior?.tipoEvento === 'Morte' && novoEventoRonda.tipoEvento !== 'Morte') {
-      setAnimais(animais.map(a => 
-        a.id === novoEventoRonda.animalId ? { ...a, status: 'Ativo' } : a
-      ));
-    }
-
-    setNovoEventoRonda({ animalId: '', invernada: '', tipoEvento: 'Doença', descricao: '', data: '', hora: '', observacoes: '' });
-    setRondaEditando(null);
-    setModalAberto(null);
-  };
-
-  const excluirEventoRonda = (id: string) => {
-    if (confirm('Deseja realmente excluir este evento de ronda?')) {
-      const evento = eventosRonda.find(e => e.id === id);
-      
-      // Se o evento sendo excluído for de "Morte", reativar o animal
-      if (evento?.tipoEvento === 'Morte') {
-        setAnimais(animais.map(a => 
-          a.id === evento.animalId ? { ...a, status: 'Ativo' } : a
-        ));
-      }
-      
-      setEventosRonda(eventosRonda.filter(e => e.id !== id));
-    }
-  };
-
-  // Funções de Compra
-  const processarCompra = () => {
-    if (!compraAnimal.identificador || !compraAnimal.dataNascimento || !compraAnimal.pesoCompra || !compraAnimal.dataCompra || !compraAnimal.lote) {
-      alert('Preencha todos os campos obrigatórios');
-      return;
-    }
-
-    const novoAnimalComprado: Animal = {
-      id: Date.now().toString(),
-      identificador: compraAnimal.identificador,
-      sexo: compraAnimal.sexo,
-      dataNascimento: compraAnimal.dataNascimento,
-      peso: parseFloat(compraAnimal.pesoCompra),
-      lote: compraAnimal.lote,
-      status: 'Ativo',
-      pesoCompra: parseFloat(compraAnimal.pesoCompra),
-      dataCompra: compraAnimal.dataCompra,
-    };
-
-    setAnimais([...animais, novoAnimalComprado]);
-    setCompraAnimal({ identificador: '', sexo: 'Macho', dataNascimento: '', pesoCompra: '', dataCompra: '', lote: '' });
-    setModalAberto(null);
-    setOperacaoPesagem(null);
-    alert(`Animal ${novoAnimalComprado.identificador} cadastrado com sucesso!`);
-  };
-
-  // Funções de Venda
-  const adicionarAnimalVenda = (animalId: string, pesoVenda: string) => {
-    if (!pesoVenda || parseFloat(pesoVenda) <= 0) {
-      alert('Informe um peso válido');
-      return;
-    }
-
-    const jaAdicionado = animaisVenda.find(av => av.animalId === animalId);
-    if (jaAdicionado) {
-      alert('Animal já adicionado ao lote de venda');
-      return;
-    }
-
-    setAnimaisVenda([...animaisVenda, { animalId, pesoVenda: parseFloat(pesoVenda) }]);
-  };
-
-  const removerAnimalVenda = (animalId: string) => {
-    setAnimaisVenda(animaisVenda.filter(av => av.animalId !== animalId));
-  };
-
-  const finalizarVenda = () => {
-    if (animaisVenda.length === 0) {
-      alert('Adicione pelo menos um animal ao lote de venda');
-      return;
-    }
-
-    // Marcar animais como vendidos
-    setAnimais(animais.map(a => 
-      animaisVenda.find(av => av.animalId === a.id) ? { ...a, status: 'Vendido' as const } : a
-    ));
-
-    // Limpar seleção
-    setAnimaisVenda([]);
-    setModalAberto(null);
-    setOperacaoPesagem(null);
-    alert('Venda registrada com sucesso!');
-  };
-
   // Cálculos
   const totalAnimais = animais.filter(a => a.status === 'Ativo').length;
   const pesoMedio = animais.filter(a => a.status === 'Ativo').reduce((acc, a) => acc + a.peso, 0) / totalAnimais || 0;
@@ -554,38 +286,9 @@ export default function BoiGauchoApp() {
     a.lote.toLowerCase().includes(busca.toLowerCase())
   );
 
-  // Cálculos para relatório de venda
-  const pesoTotalLote = animaisVenda.reduce((acc, av) => acc + av.pesoVenda, 0);
-  const relatorioVenda = animaisVenda.map(av => {
-    const animal = animais.find(a => a.id === av.animalId);
-    if (!animal || !animal.pesoCompra || !animal.dataCompra) return null;
-
-    const dataCompra = new Date(animal.dataCompra);
-    const dataVenda = new Date();
-    const diasConfinamento = Math.floor((dataVenda.getTime() - dataCompra.getTime()) / (1000 * 60 * 60 * 24));
-    const ganhoTotal = av.pesoVenda - animal.pesoCompra;
-    const gmd = diasConfinamento > 0 ? ganhoTotal / diasConfinamento : 0;
-
-    return {
-      animal,
-      pesoVenda: av.pesoVenda,
-      pesoCompra: animal.pesoCompra,
-      ganhoTotal,
-      gmd: parseFloat(gmd.toFixed(2)),
-      diasConfinamento,
-    };
-  }).filter(Boolean);
-
-  // Mostrar loading enquanto verifica autenticação
-  if (carregando || !montado) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Verificando autenticação...</p>
-        </div>
-      </div>
-    );
+  // Prevenir hydration mismatch - renderizar apenas após montagem
+  if (!montado) {
+    return null;
   }
 
   return (
@@ -635,15 +338,6 @@ export default function BoiGauchoApp() {
             <span className="font-medium">Pesagem</span>
           </button>
           <button
-            onClick={() => setTelaAtiva('ronda')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${
-              telaAtiva === 'ronda' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <ClipboardList className="w-5 h-5" />
-            <span className="font-medium">Ronda</span>
-          </button>
-          <button
             onClick={() => setTelaAtiva('eventos')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${
               telaAtiva === 'eventos' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
@@ -663,19 +357,10 @@ export default function BoiGauchoApp() {
           </button>
         </nav>
 
-        <div className="p-4 border-t border-gray-200 space-y-2">
-          {userEmail && (
-            <div className="px-4 py-2 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500">Logado como:</p>
-              <p className="text-sm font-medium text-gray-900 truncate">{userEmail}</p>
-            </div>
-          )}
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="font-medium">Sair</span>
+        <div className="p-4 border-t border-gray-200">
+          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+            <Settings className="w-5 h-5" />
+            <span className="font-medium">Configurações</span>
           </button>
         </div>
       </aside>
@@ -730,15 +415,6 @@ export default function BoiGauchoApp() {
                 <span className="font-medium">Pesagem</span>
               </button>
               <button
-                onClick={() => { setTelaAtiva('ronda'); setMenuAberto(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${
-                  telaAtiva === 'ronda' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
-                }`}
-              >
-                <ClipboardList className="w-5 h-5" />
-                <span className="font-medium">Ronda</span>
-              </button>
-              <button
                 onClick={() => { setTelaAtiva('eventos'); setMenuAberto(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${
                   telaAtiva === 'eventos' ? 'bg-emerald-50 text-emerald-700' : 'text-gray-700 hover:bg-gray-50'
@@ -757,22 +433,6 @@ export default function BoiGauchoApp() {
                 <span className="font-medium">Relatórios</span>
               </button>
             </nav>
-
-            <div className="p-4 border-t border-gray-200 space-y-2">
-              {userEmail && (
-                <div className="px-4 py-2 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500">Logado como:</p>
-                  <p className="text-sm font-medium text-gray-900 truncate">{userEmail}</p>
-                </div>
-              )}
-              <button 
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="w-5 h-5" />
-                <span className="font-medium">Sair</span>
-              </button>
-            </div>
           </div>
         </div>
       )}
@@ -801,7 +461,6 @@ export default function BoiGauchoApp() {
                       {telaAtiva === 'dashboard' && 'Dashboard'}
                       {telaAtiva === 'animais' && 'Gestão de Animais'}
                       {telaAtiva === 'pesagem' && 'Controle de Pesagem'}
-                      {telaAtiva === 'ronda' && 'Registro de Ronda'}
                       {telaAtiva === 'eventos' && 'Registro de Eventos'}
                       {telaAtiva === 'relatorios' && 'Relatórios Zootécnicos'}
                     </h2>
@@ -923,19 +582,13 @@ export default function BoiGauchoApp() {
                       <span className="text-sm font-medium text-blue-700">Novo Evento</span>
                     </button>
                     <button 
-                      onClick={() => {
-                        setOperacaoPesagem('compra');
-                        setModalAberto('compra');
-                      }}
+                      onClick={() => setModalAberto('pesagem')}
                       className="flex flex-col items-center gap-2 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
                     >
-                      <ShoppingCart className="w-6 h-6 text-purple-600" />
-                      <span className="text-sm font-medium text-purple-700">Comprar Animal</span>
+                      <Weight className="w-6 h-6 text-purple-600" />
+                      <span className="text-sm font-medium text-purple-700">Nova Pesagem</span>
                     </button>
-                    <button 
-                      onClick={() => setModalAberto('ronda')}
-                      className="flex flex-col items-center gap-2 p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
-                    >
+                    <button className="flex flex-col items-center gap-2 p-4 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors">
                       <MapPin className="w-6 h-6 text-orange-600" />
                       <span className="text-sm font-medium text-orange-700">Ronda</span>
                     </button>
@@ -1044,31 +697,19 @@ export default function BoiGauchoApp() {
           {/* Controle de Pesagem */}
           {telaAtiva === 'pesagem' && (
             <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <p className="text-gray-600">Escolha entre comprar novos animais ou vender animais do rebanho</p>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <button
-                    onClick={() => {
-                      setOperacaoPesagem('compra');
-                      setModalAberto('compra');
-                    }}
-                    className="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
-                  >
-                    <ShoppingCart className="w-4 h-4" />
-                    <span className="text-sm font-medium">Comprar Animal</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setOperacaoPesagem('venda');
-                      setAnimaisVenda([]);
-                      setModalAberto('venda');
-                    }}
-                    className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    <span className="text-sm font-medium">Vender Lote</span>
-                  </button>
-                </div>
+              <div className="flex justify-between items-center">
+                <p className="text-gray-600">Controle individual de peso de entrada, saída e GMD de cada animal</p>
+                <button
+                  onClick={() => {
+                    setNovaPesagem({ animalId: '', pesoEntrada: '', pesoSaida: '', dataEntrada: '', dataSaida: '' });
+                    setPesagemEditando(null);
+                    setModalAberto('pesagem');
+                  }}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span className="text-sm font-medium">Nova Pesagem</span>
+                </button>
               </div>
 
               <div className="grid gap-4">
@@ -1147,133 +788,13 @@ export default function BoiGauchoApp() {
                   <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center">
                     <Weight className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-bold text-gray-900 mb-2">Nenhuma pesagem registrada</h3>
-                    <p className="text-gray-600 mb-4">Comece comprando ou vendendo animais</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Registro de Ronda */}
-          {telaAtiva === 'ronda' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <p className="text-gray-600">Registre eventos observados durante a ronda diária</p>
-                <button
-                  onClick={() => {
-                    setNovoEventoRonda({ animalId: '', invernada: '', tipoEvento: 'Doença', descricao: '', data: '', hora: '', observacoes: '' });
-                    setRondaEditando(null);
-                    setModalAberto('ronda');
-                  }}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span className="text-sm font-medium">Novo Evento de Ronda</span>
-                </button>
-              </div>
-
-              <div className="grid gap-4">
-                {eventosRonda.map(evento => {
-                  const animal = animais.find(a => a.id === evento.animalId);
-                  
-                  return (
-                    <div key={evento.id} className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-16 h-16 rounded-lg flex items-center justify-center ${
-                            evento.tipoEvento === 'Doença' ? 'bg-red-100' :
-                            evento.tipoEvento === 'Ferimento' ? 'bg-orange-100' :
-                            evento.tipoEvento === 'Comportamento Anormal' ? 'bg-yellow-100' :
-                            evento.tipoEvento === 'Morte' ? 'bg-gray-100' :
-                            evento.tipoEvento === 'Parto' ? 'bg-green-100' :
-                            'bg-blue-100'
-                          }`}>
-                            <AlertCircle className={`w-8 h-8 ${
-                              evento.tipoEvento === 'Doença' ? 'text-red-600' :
-                              evento.tipoEvento === 'Ferimento' ? 'text-orange-600' :
-                              evento.tipoEvento === 'Comportamento Anormal' ? 'text-yellow-600' :
-                              evento.tipoEvento === 'Morte' ? 'text-gray-600' :
-                              evento.tipoEvento === 'Parto' ? 'text-green-600' :
-                              'text-blue-600'
-                            }`} />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-bold text-gray-900 text-lg">{animal?.identificador}</h4>
-                              <span className={`px-2 py-1 rounded-md text-xs font-medium ${
-                                evento.tipoEvento === 'Doença' ? 'bg-red-100 text-red-700' :
-                                evento.tipoEvento === 'Ferimento' ? 'bg-orange-100 text-orange-700' :
-                                evento.tipoEvento === 'Comportamento Anormal' ? 'bg-yellow-100 text-yellow-700' :
-                                evento.tipoEvento === 'Morte' ? 'bg-gray-100 text-gray-700' :
-                                evento.tipoEvento === 'Parto' ? 'bg-green-100 text-green-700' :
-                                'bg-blue-100 text-blue-700'
-                              }`}>
-                                {evento.tipoEvento}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-600">
-                              <MapPin className="w-4 h-4 inline mr-1" />
-                              {evento.invernada}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => editarEventoRonda(evento.id)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Editar"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => excluirEventoRonda(evento.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="bg-gray-50 rounded-lg p-4">
-                          <p className="text-xs text-gray-600 font-medium mb-1">Descrição do Evento</p>
-                          <p className="text-sm text-gray-900">{evento.descricao}</p>
-                        </div>
-
-                        {evento.observacoes && (
-                          <div className="bg-blue-50 rounded-lg p-4">
-                            <p className="text-xs text-blue-600 font-medium mb-1">Observações</p>
-                            <p className="text-sm text-blue-900">{evento.observacoes}</p>
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            <span>{formatarData(evento.data)}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span>🕐</span>
-                            <span>{evento.hora}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {eventosRonda.length === 0 && (
-                  <div className="bg-white rounded-xl p-12 shadow-sm border border-gray-200 text-center">
-                    <ClipboardList className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">Nenhum evento de ronda registrado</h3>
-                    <p className="text-gray-600 mb-4">Comece registrando os eventos observados durante a ronda</p>
+                    <p className="text-gray-600 mb-4">Comece registrando a primeira pesagem dos seus animais</p>
                     <button
-                      onClick={() => setModalAberto('ronda')}
+                      onClick={() => setModalAberto('pesagem')}
                       className="px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors inline-flex items-center gap-2"
                     >
                       <Plus className="w-5 h-5" />
-                      <span className="font-medium">Registrar Primeiro Evento</span>
+                      <span className="font-medium">Registrar Primeira Pesagem</span>
                     </button>
                   </div>
                 )}
@@ -1683,385 +1204,6 @@ export default function BoiGauchoApp() {
                 className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
               >
                 {pesagemEditando ? 'Atualizar' : 'Registrar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Novo Evento de Ronda */}
-      {modalAberto === 'ronda' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setModalAberto(null); setRondaEditando(null); }}>
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
-              {rondaEditando ? 'Editar Evento de Ronda' : 'Registrar Evento de Ronda'}
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Animal *</label>
-                <select
-                  value={novoEventoRonda.animalId}
-                  onChange={(e) => setNovoEventoRonda({...novoEventoRonda, animalId: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                >
-                  <option value="">Selecione um animal</option>
-                  {animais.filter(a => a.status === 'Ativo').map(animal => (
-                    <option key={animal.id} value={animal.id}>
-                      {animal.identificador} - {animal.lote}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Invernada *</label>
-                <input
-                  type="text"
-                  value={novoEventoRonda.invernada}
-                  onChange={(e) => setNovoEventoRonda({...novoEventoRonda, invernada: e.target.value})}
-                  placeholder="Ex: Invernada Norte"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Evento *</label>
-                <select
-                  value={novoEventoRonda.tipoEvento}
-                  onChange={(e) => setNovoEventoRonda({...novoEventoRonda, tipoEvento: e.target.value as any})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                >
-                  <option value="Doença">Doença</option>
-                  <option value="Ferimento">Ferimento</option>
-                  <option value="Comportamento Anormal">Comportamento Anormal</option>
-                  <option value="Morte">Morte</option>
-                  <option value="Parto">Parto</option>
-                  <option value="Outro">Outro</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição do Evento *</label>
-                <textarea
-                  value={novoEventoRonda.descricao}
-                  onChange={(e) => setNovoEventoRonda({...novoEventoRonda, descricao: e.target.value})}
-                  placeholder="Descreva o que foi observado..."
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data *</label>
-                  <input
-                    type="date"
-                    value={novoEventoRonda.data}
-                    onChange={(e) => setNovoEventoRonda({...novoEventoRonda, data: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hora *</label>
-                  <input
-                    type="time"
-                    value={novoEventoRonda.hora}
-                    onChange={(e) => setNovoEventoRonda({...novoEventoRonda, hora: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Observações Adicionais</label>
-                <textarea
-                  value={novoEventoRonda.observacoes}
-                  onChange={(e) => setNovoEventoRonda({...novoEventoRonda, observacoes: e.target.value})}
-                  placeholder="Ações tomadas, recomendações..."
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => { setModalAberto(null); setRondaEditando(null); }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={rondaEditando ? atualizarEventoRonda : adicionarEventoRonda}
-                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
-              >
-                {rondaEditando ? 'Atualizar' : 'Registrar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Compra de Animal */}
-      {modalAberto === 'compra' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setModalAberto(null); setOperacaoPesagem(null); }}>
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <ShoppingCart className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Comprar Animal</h3>
-                <p className="text-sm text-gray-600">Cadastre o animal e registre a pesagem de entrada</p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Identificador *</label>
-                <input
-                  type="text"
-                  value={compraAnimal.identificador}
-                  onChange={(e) => setCompraAnimal({...compraAnimal, identificador: e.target.value})}
-                  placeholder="Ex: BV-006"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sexo *</label>
-                  <select
-                    value={compraAnimal.sexo}
-                    onChange={(e) => setCompraAnimal({...compraAnimal, sexo: e.target.value as 'Macho' | 'Fêmea'})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  >
-                    <option value="Macho">Macho</option>
-                    <option value="Fêmea">Fêmea</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data de Nascimento *</label>
-                  <input
-                    type="date"
-                    value={compraAnimal.dataNascimento}
-                    onChange={(e) => setCompraAnimal({...compraAnimal, dataNascimento: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Peso de Compra (kg) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={compraAnimal.pesoCompra}
-                    onChange={(e) => setCompraAnimal({...compraAnimal, pesoCompra: e.target.value})}
-                    placeholder="Ex: 400"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data da Compra *</label>
-                  <input
-                    type="date"
-                    value={compraAnimal.dataCompra}
-                    onChange={(e) => setCompraAnimal({...compraAnimal, dataCompra: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lote *</label>
-                <input
-                  type="text"
-                  value={compraAnimal.lote}
-                  onChange={(e) => setCompraAnimal({...compraAnimal, lote: e.target.value})}
-                  placeholder="Ex: Engorda A"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
-                <p className="text-sm text-emerald-700 font-medium">✓ O animal será cadastrado automaticamente na aba Animais</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={() => { setModalAberto(null); setOperacaoPesagem(null); }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={processarCompra}
-                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
-              >
-                Confirmar Compra
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Venda de Lote */}
-      {modalAberto === 'venda' && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setModalAberto(null); setOperacaoPesagem(null); setAnimaisVenda([]); }}>
-          <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Vender Lote de Animais</h3>
-                <p className="text-sm text-gray-600">Selecione os animais e registre o peso de venda</p>
-              </div>
-            </div>
-
-            {/* Lista de Animais Disponíveis */}
-            <div className="mb-6">
-              <h4 className="font-bold text-gray-900 mb-3">Animais Disponíveis para Venda</h4>
-              <div className="grid gap-3 max-h-60 overflow-y-auto">
-                {animais.filter(a => a.status === 'Ativo').map(animal => {
-                  const jaAdicionado = animaisVenda.find(av => av.animalId === animal.id);
-                  return (
-                    <div key={animal.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{animal.identificador}</p>
-                        <p className="text-sm text-gray-600">{animal.lote} • {animal.sexo} • Peso atual: {animal.peso} kg</p>
-                      </div>
-                      {!jaAdicionado ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            step="0.1"
-                            placeholder="Peso venda"
-                            id={`peso-${animal.id}`}
-                            className="w-28 px-2 py-1 border border-gray-300 rounded text-sm"
-                          />
-                          <button
-                            onClick={() => {
-                              const input = document.getElementById(`peso-${animal.id}`) as HTMLInputElement;
-                              adicionarAnimalVenda(animal.id, input.value);
-                              input.value = '';
-                            }}
-                            className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-                          >
-                            Adicionar
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="w-5 h-5 text-green-600" />
-                          <span className="text-sm text-green-600 font-medium">Adicionado</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Lote Selecionado */}
-            {animaisVenda.length > 0 && (
-              <div className="mb-6">
-                <h4 className="font-bold text-gray-900 mb-3">Lote Selecionado ({animaisVenda.length} animais)</h4>
-                <div className="space-y-3">
-                  {animaisVenda.map(av => {
-                    const animal = animais.find(a => a.id === av.animalId);
-                    if (!animal) return null;
-                    return (
-                      <div key={av.animalId} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900">{animal.identificador}</p>
-                          <p className="text-sm text-gray-600">Peso de venda: {av.pesoVenda} kg</p>
-                        </div>
-                        <button
-                          onClick={() => removerAnimalVenda(av.animalId)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Resumo do Lote */}
-                <div className="mt-4 p-4 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg text-white">
-                  <h5 className="font-bold mb-2">Resumo do Lote</h5>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-blue-100">Total de Animais</p>
-                      <p className="text-2xl font-bold">{animaisVenda.length}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-blue-100">Peso Total do Lote</p>
-                      <p className="text-2xl font-bold">{pesoTotalLote.toFixed(1)} kg</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Relatório Individual */}
-                {relatorioVenda.length > 0 && (
-                  <div className="mt-4">
-                    <h5 className="font-bold text-gray-900 mb-3">Relatório Individual de Ganho</h5>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Animal</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Peso Compra</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Peso Venda</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ganho Total</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Dias</th>
-                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">GMD</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {relatorioVenda.map(r => (
-                            <tr key={r?.animal.id}>
-                              <td className="px-3 py-2 font-medium">{r?.animal.identificador}</td>
-                              <td className="px-3 py-2">{r?.pesoCompra} kg</td>
-                              <td className="px-3 py-2">{r?.pesoVenda} kg</td>
-                              <td className="px-3 py-2 text-green-600 font-medium">+{r?.ganhoTotal.toFixed(1)} kg</td>
-                              <td className="px-3 py-2">{r?.diasConfinamento} dias</td>
-                              <td className="px-3 py-2">
-                                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                  r && r.gmd >= 1.5 ? 'bg-green-100 text-green-700' :
-                                  r && r.gmd >= 1.0 ? 'bg-blue-100 text-blue-700' :
-                                  r && r.gmd >= 0.7 ? 'bg-yellow-100 text-yellow-700' :
-                                  'bg-red-100 text-red-700'
-                                }`}>
-                                  {r?.gmd} kg/dia
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setModalAberto(null); setOperacaoPesagem(null); setAnimaisVenda([]); }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={finalizarVenda}
-                disabled={animaisVenda.length === 0}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
-              >
-                Finalizar Venda
               </button>
             </div>
           </div>
