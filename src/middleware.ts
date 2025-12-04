@@ -11,6 +11,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Permitir acesso a rotas de API sem autenticação
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   // Verificar se o usuário está autenticado
   const accessToken = request.cookies.get('sb-access-token')?.value;
   const refreshToken = request.cookies.get('sb-refresh-token')?.value;
@@ -51,5 +56,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|icon.svg|.*\\..*).*)'],
+  matcher: ['/((?!_next/static|_next/image|icon.svg|.*\\..*).*)'],
 };

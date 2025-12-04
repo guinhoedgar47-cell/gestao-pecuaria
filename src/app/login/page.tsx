@@ -119,27 +119,14 @@ export default function LoginPage() {
         if (error) throw error;
         
         if (data.session) {
-          // Salvar tokens nos cookies via API route
-          const response = await fetch('/api/auth/set-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              access_token: data.session.access_token,
-              refresh_token: data.session.refresh_token,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error('Erro ao salvar sessão');
-          }
-          
           setSuccess('Login realizado com sucesso! Redirecionando...');
           
-          // Aguardar para garantir que os cookies foram salvos
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          // Aguardar um pouco antes de redirecionar
+          await new Promise(resolve => setTimeout(resolve, 500));
           
-          // Redirecionar usando window.location para forçar reload completo
-          window.location.href = '/';
+          // Redirecionar diretamente sem usar API route
+          router.push('/');
+          router.refresh();
         }
       } else {
         // Cadastro

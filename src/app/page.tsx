@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { 
   Home, Activity, FileText, Settings, Plus, Search, 
   TrendingUp, AlertCircle, Calendar, Weight, Syringe, 
-  MapPin, Download, Filter, ChevronRight, Menu, X, Edit, Trash2, LogOut
+  MapPin, Download, Filter, ChevronRight, Menu, X, Edit, Trash2, LogOut, CheckCircle
 } from 'lucide-react';
 
 // Tipos
@@ -64,25 +64,38 @@ export default function BoiGauchoApp() {
   const [montado, setMontado] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
   const [telaAtiva, setTelaAtiva] = useState<'dashboard' | 'animais' | 'eventos' | 'relatorios' | 'pesagem'>('dashboard');
-  const [modalAberto, setModalAberto] = useState<'animal' | 'evento' | 'pesagem' | null>(null);
+  const [modalAberto, setModalAberto] = useState<'animal' | 'evento' | 'pesagem' | 'confirmarLogout' | 'confirmarExclusao' | null>(null);
   const [busca, setBusca] = useState('');
   const [pesagemEditando, setPesagemEditando] = useState<string | null>(null);
+  const [pesagemParaExcluir, setPesagemParaExcluir] = useState<string | null>(null);
+  const [mensagemErro, setMensagemErro] = useState('');
+  const [mensagemSucesso, setMensagemSucesso] = useState('');
 
   // Garantir que o componente está montado no cliente
   useEffect(() => {
     setMontado(true);
   }, []);
 
+  // Auto-hide mensagens após 3 segundos
+  useEffect(() => {
+    if (mensagemErro || mensagemSucesso) {
+      const timer = setTimeout(() => {
+        setMensagemErro('');
+        setMensagemSucesso('');
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [mensagemErro, mensagemSucesso]);
+
   // Função de logout
   const handleLogout = async () => {
-    if (confirm('Deseja realmente sair do sistema?')) {
-      try {
-        await fetch('/api/auth/logout', { method: 'POST' });
-        router.push('/login');
-        router.refresh();
-      } catch (error) {
-        console.error('Erro ao fazer logout:', error);
-      }
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.push('/login');
+      router.refresh();
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error);
+      setMensagemErro('Erro ao fazer logout. Tente novamente.');
     }
   };
 
@@ -153,7 +166,7 @@ export default function BoiGauchoApp() {
   // Funções
   const adicionarAnimal = () => {
     if (!novoAnimal.identificador || !novoAnimal.dataNascimento || !novoAnimal.peso || !novoAnimal.lote) {
-      alert('Preencha todos os campos obrigatórios');
+      setMensagemErro('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -170,11 +183,12 @@ export default function BoiGauchoApp() {
     setAnimais([...animais, animal]);
     setNovoAnimal({ identificador: '', sexo: 'Macho', dataNascimento: '', peso: '', lote: '' });
     setModalAberto(null);
+    setMensagemSucesso('Animal cadastrado com sucesso!');
   };
 
   const adicionarEvento = () => {
     if (!novoEvento.animalId || !novoEvento.data || !novoEvento.descricao) {
-      alert('Preencha todos os campos obrigatórios');
+      setMensagemErro('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -190,11 +204,12 @@ export default function BoiGauchoApp() {
     setEventos([...eventos, evento]);
     setNovoEvento({ animalId: '', tipo: 'Vacinação', data: '', descricao: '', valor: '' });
     setModalAberto(null);
+    setMensagemSucesso('Evento registrado com sucesso!');
   };
 
   const adicionarPesagem = () => {
     if (!novaPesagem.animalId || !novaPesagem.pesoEntrada || !novaPesagem.pesoSaida || !novaPesagem.dataEntrada || !novaPesagem.dataSaida) {
-      alert('Preencha todos os campos obrigatórios');
+      setMensagemErro('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -202,14 +217,14 @@ export default function BoiGauchoApp() {
     const pesoSaida = parseFloat(novaPesagem.pesoSaida);
     
     if (pesoSaida <= pesoEntrada) {
-      alert('O peso de saída deve ser maior que o peso de entrada');
+      setMensagemErro('O peso de saída deve ser maior que o peso de entrada');
       return;
     }
 
     const { gmd, dias } = calcularGMD(pesoEntrada, pesoSaida, novaPesagem.dataEntrada, novaPesagem.dataSaida);
 
     if (dias <= 0) {
-      alert('A data de saída deve ser posterior à data de entrada');
+      setMensagemErro('A data de saída deve ser posterior à data de entrada');
       return;
     }
 
@@ -233,6 +248,7 @@ export default function BoiGauchoApp() {
 
     setNovaPesagem({ animalId: '', pesoEntrada: '', pesoSaida: '', dataEntrada: '', dataSaida: '' });
     setModalAberto(null);
+    setMensagemSucesso('Pesagem registrada com sucesso!');
   };
 
   const editarPesagem = (id: string) => {
@@ -257,14 +273,14 @@ export default function BoiGauchoApp() {
     const pesoSaida = parseFloat(novaPesagem.pesoSaida);
     
     if (pesoSaida <= pesoEntrada) {
-      alert('O peso de saída deve ser maior que o peso de entrada');
+      setMensagemErro('O peso de saída deve ser maior que o peso de entrada');
       return;
     }
 
     const { gmd, dias } = calcularGMD(pesoEntrada, pesoSaida, novaPesagem.dataEntrada, novaPesagem.dataSaida);
 
     if (dias <= 0) {
-      alert('A data de saída deve ser posterior à data de entrada');
+      setMensagemErro('A data de saída deve ser posterior à data de entrada');
       return;
     }
 
@@ -282,11 +298,20 @@ export default function BoiGauchoApp() {
     setNovaPesagem({ animalId: '', pesoEntrada: '', pesoSaida: '', dataEntrada: '', dataSaida: '' });
     setPesagemEditando(null);
     setModalAberto(null);
+    setMensagemSucesso('Pesagem atualizada com sucesso!');
   };
 
-  const excluirPesagem = (id: string) => {
-    if (confirm('Deseja realmente excluir esta pesagem?')) {
-      setPesagens(pesagens.filter(p => p.id !== id));
+  const confirmarExclusaoPesagem = (id: string) => {
+    setPesagemParaExcluir(id);
+    setModalAberto('confirmarExclusao');
+  };
+
+  const excluirPesagem = () => {
+    if (pesagemParaExcluir) {
+      setPesagens(pesagens.filter(p => p.id !== pesagemParaExcluir));
+      setPesagemParaExcluir(null);
+      setModalAberto(null);
+      setMensagemSucesso('Pesagem excluída com sucesso!');
     }
   };
 
@@ -308,6 +333,41 @@ export default function BoiGauchoApp() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Mensagens de Feedback */}
+      {mensagemErro && (
+        <div className="fixed top-4 right-4 z-50 max-w-md animate-in slide-in-from-top">
+          <div className="bg-red-50 border-2 border-red-400 rounded-xl p-4 shadow-lg">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-900 mb-1">Erro</h3>
+                <p className="text-sm text-red-800">{mensagemErro}</p>
+              </div>
+              <button onClick={() => setMensagemErro('')} className="text-red-600 hover:text-red-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mensagemSucesso && (
+        <div className="fixed top-4 right-4 z-50 max-w-md animate-in slide-in-from-top">
+          <div className="bg-green-50 border-2 border-green-400 rounded-xl p-4 shadow-lg">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-green-900 mb-1">Sucesso</h3>
+                <p className="text-sm text-green-800">{mensagemSucesso}</p>
+              </div>
+              <button onClick={() => setMensagemSucesso('')} className="text-green-600 hover:text-green-700">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Sidebar Desktop */}
       <aside className="hidden lg:flex lg:flex-col w-64 bg-white border-r border-gray-200 fixed h-full">
         <div className="p-6 border-b border-gray-200">
@@ -374,7 +434,7 @@ export default function BoiGauchoApp() {
 
         <div className="p-4 border-t border-gray-200">
           <button 
-            onClick={handleLogout}
+            onClick={() => setModalAberto('confirmarLogout')}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
           >
             <LogOut className="w-5 h-5" />
@@ -454,7 +514,7 @@ export default function BoiGauchoApp() {
 
             <div className="p-4 border-t border-gray-200 absolute bottom-0 w-full bg-white">
               <button 
-                onClick={handleLogout}
+                onClick={() => { setMenuAberto(false); setModalAberto('confirmarLogout'); }}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
               >
                 <LogOut className="w-5 h-5" />
@@ -502,7 +562,7 @@ export default function BoiGauchoApp() {
                   <span className="text-sm font-medium">Online</span>
                 </div>
                 <button 
-                  onClick={handleLogout}
+                  onClick={() => setModalAberto('confirmarLogout')}
                   className="hidden sm:flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                   title="Sair"
                 >
@@ -773,7 +833,7 @@ export default function BoiGauchoApp() {
                             <Edit className="w-5 h-5" />
                           </button>
                           <button
-                            onClick={() => excluirPesagem(pesagem.id)}
+                            onClick={() => confirmarExclusaoPesagem(pesagem.id)}
                             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                             title="Excluir"
                           >
@@ -969,6 +1029,64 @@ export default function BoiGauchoApp() {
           )}
         </div>
       </main>
+
+      {/* Modal Confirmar Logout */}
+      {modalAberto === 'confirmarLogout' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setModalAberto(null)}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <LogOut className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Confirmar Saída</h3>
+            </div>
+            <p className="text-gray-600 mb-6">Deseja realmente sair do sistema?</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setModalAberto(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Sair
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Exclusão */}
+      {modalAberto === 'confirmarExclusao' && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => { setModalAberto(null); setPesagemParaExcluir(null); }}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900">Confirmar Exclusão</h3>
+            </div>
+            <p className="text-gray-600 mb-6">Deseja realmente excluir esta pesagem? Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setModalAberto(null); setPesagemParaExcluir(null); }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={excluirPesagem}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Novo Animal */}
       {modalAberto === 'animal' && (
