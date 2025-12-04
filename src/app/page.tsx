@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Home, Activity, FileText, Settings, Plus, Search, 
   TrendingUp, AlertCircle, Calendar, Weight, Syringe, 
-  MapPin, Download, Filter, ChevronRight, Menu, X, Edit, Trash2
+  MapPin, Download, Filter, ChevronRight, Menu, X, Edit, Trash2, LogOut
 } from 'lucide-react';
 
 // Tipos
@@ -59,6 +60,7 @@ const calcularGMD = (pesoEntrada: number, pesoSaida: number, dataEntrada: string
 };
 
 export default function BoiGauchoApp() {
+  const router = useRouter();
   const [montado, setMontado] = useState(false);
   const [menuAberto, setMenuAberto] = useState(false);
   const [telaAtiva, setTelaAtiva] = useState<'dashboard' | 'animais' | 'eventos' | 'relatorios' | 'pesagem'>('dashboard');
@@ -70,6 +72,19 @@ export default function BoiGauchoApp() {
   useEffect(() => {
     setMontado(true);
   }, []);
+
+  // Função de logout
+  const handleLogout = async () => {
+    if (confirm('Deseja realmente sair do sistema?')) {
+      try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        router.push('/login');
+        router.refresh();
+      } catch (error) {
+        console.error('Erro ao fazer logout:', error);
+      }
+    }
+  };
 
   // Dados mockados realistas
   const [animais, setAnimais] = useState<Animal[]>([
@@ -358,9 +373,12 @@ export default function BoiGauchoApp() {
         </nav>
 
         <div className="p-4 border-t border-gray-200">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-            <Settings className="w-5 h-5" />
-            <span className="font-medium">Configurações</span>
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Sair</span>
           </button>
         </div>
       </aside>
@@ -386,7 +404,7 @@ export default function BoiGauchoApp() {
               </button>
             </div>
 
-            <nav className="p-4">
+            <nav className="p-4 flex-1">
               <button
                 onClick={() => { setTelaAtiva('dashboard'); setMenuAberto(false); }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-colors ${
@@ -433,6 +451,16 @@ export default function BoiGauchoApp() {
                 <span className="font-medium">Relatórios</span>
               </button>
             </nav>
+
+            <div className="p-4 border-t border-gray-200 absolute bottom-0 w-full bg-white">
+              <button 
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Sair</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -473,6 +501,13 @@ export default function BoiGauchoApp() {
                   <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                   <span className="text-sm font-medium">Online</span>
                 </div>
+                <button 
+                  onClick={handleLogout}
+                  className="hidden sm:flex items-center gap-2 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Sair"
+                >
+                  <LogOut className="w-5 h-5" />
+                </button>
               </div>
             </div>
           </div>

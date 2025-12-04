@@ -5,12 +5,51 @@ import { useRouter } from 'next/navigation';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { Mail, Lock, Eye, EyeOff, LogIn, UserPlus, AlertCircle } from 'lucide-react';
 
+// Função para validar e sugerir correção de email
+const validateAndSuggestEmail = (email: string): { isValid: boolean; suggestion?: string; error?: string } => {
+  // Validação básica de formato
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  
+  if (!emailRegex.test(email)) {
+    return { isValid: false, error: 'Formato de email inválido' };
+  }
+
+  // Domínios comuns com erros de digitação
+  const commonTypos: { [key: string]: string } = {
+    'gamil.com': 'gmail.com',
+    'gmial.com': 'gmail.com',
+    'gmai.com': 'gmail.com',
+    'gmil.com': 'gmail.com',
+    'yahooo.com': 'yahoo.com',
+    'yaho.com': 'yahoo.com',
+    'hotmial.com': 'hotmail.com',
+    'hotmal.com': 'hotmail.com',
+    'outlok.com': 'outlook.com',
+    'outloo.com': 'outlook.com',
+  };
+
+  const domain = email.split('@')[1]?.toLowerCase();
+  
+  if (domain && commonTypos[domain]) {
+    const correctedEmail = email.replace(domain, commonTypos[domain]);
+    return { 
+      isValid: false, 
+      suggestion: correctedEmail,
+      error: `Você quis dizer "${correctedEmail}"?`
+    };
+  }
+
+  return { isValid: true };
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [emailSuggestion, setEmailSuggestion] = useState('');
   const [supabaseReady, setSupabaseReady] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -23,13 +62,47 @@ export default function LoginPage() {
     setSupabaseReady(isSupabaseConfigured());
   }, []);
 
+  // Validar email em tempo real
+  const handleEmailChange = (email: string) => {
+    setFormData({ ...formData, email });
+    setEmailSuggestion('');
+    
+    if (email.includes('@')) {
+      const validation = validateAndSuggestEmail(email);
+      if (validation.suggestion) {
+        setEmailSuggestion(validation.suggestion);
+      }
+    }
+  };
+
+  // Aplicar sugestão de email
+  const applySuggestion = () => {
+    if (emailSuggestion) {
+      setFormData({ ...formData, email: emailSuggestion });
+      setEmailSuggestion('');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccess('');
 
     // Verificar se o Supabase está configurado
     if (!supabase || !supabaseReady) {
       setError('Supabase não está configurado. Por favor, configure suas credenciais.');
+      return;
+    }
+
+    // Validar email antes de enviar
+    const emailValidation = validateAndSuggestEmail(formData.email);
+    if (!emailValidation.isValid) {
+      if (emailValidation.suggestion) {
+        setError(`Email inválido. ${emailValidation.error}`);
+        setEmailSuggestion(emailValidation.suggestion);
+      } else {
+        setError(emailValidation.error || 'Email inválido');
+      }
       return;
     }
 
@@ -39,14 +112,34 @@ export default function LoginPage() {
       if (isLogin) {
         // Login
         const { data, error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
+          email: formData.email.trim().toLowerCase(),
           password: formData.password,
         });
 
         if (error) throw error;
         
-        if (data.user) {
-          router.push('/');
+        if (data.session) {
+          // Salvar tokens nos cookies via API route
+          const response = await fetch('/api/auth/set-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              access_token: data.session.access_token,
+              refresh_token: data.session.refresh_token,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Erro ao salvar sessão');
+          }
+          
+          setSuccess('Login realizado com sucesso! Redirecionando...');
+          
+          // Aguardar para garantir que os cookies foram salvos
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Redirecionar usando window.location para forçar reload completo
+          window.location.href = '/';
         }
       } else {
         // Cadastro
@@ -63,7 +156,7 @@ export default function LoginPage() {
         }
 
         const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
+          email: formData.email.trim().toLowerCase(),
           password: formData.password,
           options: {
             emailRedirectTo: `${window.location.origin}/auth/callback`,
@@ -74,12 +167,28 @@ export default function LoginPage() {
 
         if (data.user) {
           setError('');
-          alert('Cadastro realizado com sucesso! Verifique seu email para confirmar.');
-          setIsLogin(true);
+          setSuccess('Cadastro realizado com sucesso! Verifique seu email para confirmar.');
+          setTimeout(() => {
+            setIsLogin(true);
+            setSuccess('');
+          }, 3000);
         }
       }
     } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro. Tente novamente.');
+      // Melhorar mensagens de erro do Supabase
+      let errorMessage = err.message || 'Ocorreu um erro. Tente novamente.';
+      
+      if (errorMessage.includes('Invalid login credentials')) {
+        errorMessage = 'Email ou senha incorretos. Verifique suas credenciais.';
+      } else if (errorMessage.includes('Email not confirmed')) {
+        errorMessage = 'Email não confirmado. Verifique sua caixa de entrada.';
+      } else if (errorMessage.includes('User already registered')) {
+        errorMessage = 'Este email já está cadastrado. Faça login.';
+      } else if (errorMessage.includes('invalid')) {
+        errorMessage = 'Email inválido. Verifique se digitou corretamente.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -172,12 +281,29 @@ export default function LoginPage() {
                     type="email"
                     required
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => handleEmailChange(e.target.value)}
                     placeholder="seu@email.com"
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                     disabled={!supabaseReady}
                   />
                 </div>
+                
+                {/* Sugestão de correção de email */}
+                {emailSuggestion && (
+                  <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      Você quis dizer{' '}
+                      <button
+                        type="button"
+                        onClick={applySuggestion}
+                        className="font-semibold text-blue-600 hover:text-blue-700 underline"
+                      >
+                        {emailSuggestion}
+                      </button>
+                      ?
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Senha */}
@@ -234,6 +360,13 @@ export default function LoginPage() {
                 </div>
               )}
 
+              {/* Mensagem de Sucesso */}
+              {success && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-600">{success}</p>
+                </div>
+              )}
+
               {/* Botão de Submit */}
               <button
                 type="submit"
@@ -277,6 +410,8 @@ export default function LoginPage() {
                   onClick={() => {
                     setIsLogin(!isLogin);
                     setError('');
+                    setSuccess('');
+                    setEmailSuggestion('');
                     setFormData({ email: '', password: '', confirmPassword: '' });
                   }}
                   className="text-emerald-600 font-medium hover:text-emerald-700 transition-colors"
